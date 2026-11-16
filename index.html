@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vinicius Kiatkoski Neves</title>
+<meta name="description" content="Software engineer in Berlin, tech lead at Miro. Articles on JavaScript, Vue and AWS, and a weekly list of what I read and watched.">
+<meta property="og:title" content="Vinicius Kiatkoski Neves">
+<meta property="og:description" content="Software engineer in Berlin, tech lead at Miro. Articles on JavaScript, Vue and AWS, and a weekly list of what I read and watched.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://viniciuskneves.github.io/">
+<link rel="canonical" href="https://viniciuskneves.github.io/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231f2328'/%3E%3Ctext x='16' y='21.5' font-family='system-ui,sans-serif' font-size='15' font-weight='700' text-anchor='middle' fill='%23fff'%3EVK%3C/text%3E%3C/svg%3E">
+<style>
+  /* Same palette and type as the WIRWTW pages, so the site reads as one. */
+  :root {
+    color-scheme: light;
+    --ink: #1f2328;
+    --muted: #59636e;
+    --line: #d1d9e0;
+    --soft: #f6f8fa;
+    --link: #0969da;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 18px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: #fff;
+  }
+  main { max-width: 680px; margin: 0 auto; padding: 56px 20px 72px; }
+  a { color: var(--link); text-underline-offset: .15em; }
+  a:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; border-radius: 4px; }
+
+  h1 { margin: 0; font-size: clamp(2rem, 6vw, 2.6rem); line-height: 1.15; letter-spacing: -.01em; }
+  .role { margin: .35rem 0 1.75rem; color: var(--muted); }
+  h2 { margin: 3rem 0 1rem; font-size: 1.25rem; }
+  p { margin: 0 0 1rem; }
+
+  /* The two things people come here for: big, full-width targets. */
+  .main-links { list-style: none; margin: 2rem 0 0; padding: 0; display: grid; gap: 12px; }
+  .main-links a {
+    display: block;
+    padding: 16px 20px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: inherit;
+    text-decoration: none;
+  }
+  .main-links a:hover { border-color: var(--link); background: var(--soft); }
+  .main-links strong { display: block; color: var(--link); font-size: 1.1rem; }
+  .main-links strong::after { content: " →"; }
+  .main-links span { display: block; color: var(--muted); font-size: 1rem; }
+
+  .work { list-style: none; margin: 0; padding: 0; }
+  .work li { padding: 14px 0; border-top: 1px solid var(--line); }
+  .work li:last-child { border-bottom: 1px solid var(--line); }
+  .work .when { display: block; color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+  .work b { font-weight: 600; }
+
+  footer { margin-top: 3rem; color: var(--muted); font-size: 1rem; }
+  footer ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Vinicius Kiatkoski Neves</h1>
+    <p class="role">Senior Software Engineer at Miro · Berlin</p>
+  </header>
+
+  <p>I'm a software engineer with over ten years of experience, mostly in TypeScript and JavaScript. I like building products, and I like building the things other engineers build on: contracts between services, published packages, shared tooling and, lately, the interfaces AI agents use.</p>
+
+  <nav aria-label="Writing">
+    <ul class="main-links">
+      <li>
+        <a href="https://github.com/viniciuskneves/articles">
+          <strong>Articles</strong>
+          <span>Everything I've published, with links to DEV, Medium and LinkedIn.</span>
+        </a>
+      </li>
+      <li>
+        <a href="wirwtw/">
+          <strong>What I Read/Watched This Week</strong>
+          <span>A weekly list of the articles and videos I liked, some with notes.</span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <section aria-labelledby="work">
+    <h2 id="work">Work</h2>
+    <ul class="work">
+      <li>
+        <span class="when">2024 – now</span>
+        <b>Miro, Senior Software Engineer.</b> Tech lead for the HTML widget behind the second generation of Miro Prototypes. I joined the Prototyping team as it formed around an acquisition and brought Prototyping to production as a new Miro product.
+      </li>
+      <li>
+        <span class="when">2022 – 2024</span>
+        <b>Miro, Engineering Manager.</b> Started a team that took over the Grid widget and ran a performance program for it: zooming became up to 30% faster on large boards. Later also led a second team.
+      </li>
+      <li>
+        <span class="when">2019 – 2022</span>
+        <b>Homeday, Frontend Engineer, then Engineering Manager and Lead.</b> One of the main contributors to <a href="https://github.com/homeday-de/homeday-blocks">Homeday Blocks</a>, the company's open source Vue.js component library, and brought infrastructure as code to the frontend projects with AWS CDK.
+      </li>
+      <li>
+        <span class="when">2015 – 2018</span>
+        <b>Chaordic, Software Developer.</b> APIs in Node.js and Scala, and lead developer on the team that integrated our products into customers' websites.
+      </li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="talks">
+    <h2 id="talks">Talks and community</h2>
+    <p>Between 2017 and 2020 I gave ten talks at meetups and conferences, including Vue.js Berlin, BerlinJS, Porto.Vue and The Developer's Conference, on topics from how JavaScript works to visual testing and Vue 3 Suspense. The <a href="https://slides.com/viniciuskneves">slides are on slides.com</a>.</p>
+    <p>In Florianópolis I organized the VueFloripa meetup and the Front in Floripa conference.</p>
+  </section>
+
+  <footer>
+    <ul>
+      <li><a href="https://github.com/viniciuskneves">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/viniciuskneves/">LinkedIn</a></li>
+      <li><a href="https://dev.to/viniciuskneves">DEV</a></li>
+      <li><a href="https://viniciuskneves.medium.com">Medium</a></li>
+    </ul>
+  </footer>
+</main>
+</body>
+</html>
