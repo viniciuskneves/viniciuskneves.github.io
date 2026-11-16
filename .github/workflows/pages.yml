@@ -7,6 +7,18 @@
 # Requires Settings → Pages → Build and deployment → Source: "GitHub Actions".
 name: Deploy site
 
+# Name discussion runs after what happened, e.g.
+# 'Discussion #3 labeled "wirwtw": WIRWTW #2'. For pushes and manual runs this
+# is empty, so GitHub keeps its default (the commit message for a push).
+run-name: >-
+  ${{ github.event_name == 'discussion' && format(
+  'Discussion #{0} {1}{2}: {3}',
+  github.event.discussion.number,
+  github.event.action,
+  github.event.label && format(' "{0}"', github.event.label.name) || '',
+  github.event.discussion.title
+  ) || '' }}
+
 on:
   push:
     branches: [main]
