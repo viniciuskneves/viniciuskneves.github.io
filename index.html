@@ -32,8 +32,18 @@
   a { color: var(--link); text-underline-offset: .15em; }
   a:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; border-radius: 4px; }
 
-  h1 { margin: 0; font-size: clamp(2rem, 6vw, 2.6rem); line-height: 1.15; letter-spacing: -.01em; }
-  .role { margin: .35rem 0 1.75rem; color: var(--muted); }
+  /* Photo beside the name and role; on phones the role moves under both so
+     it doesn't wrap in the narrow column next to the photo. */
+  header { display: grid; grid-template-columns: auto 1fr; column-gap: 20px; align-content: center; margin-bottom: 1.75rem; }
+  .avatar { grid-row: span 2; align-self: center; width: 88px; height: 88px; border-radius: 50%; background: var(--soft); }
+  h1 { align-self: end; margin: 0; font-size: clamp(2rem, 6vw, 2.6rem); line-height: 1.15; letter-spacing: -.01em; }
+  .role { align-self: start; margin: .35rem 0 0; color: var(--muted); }
+  @media (max-width: 480px) {
+    header { column-gap: 16px; }
+    .avatar { grid-row: auto; width: 64px; height: 64px; }
+    h1 { align-self: center; }
+    .role { grid-column: 1 / -1; margin-top: .75rem; }
+  }
   h2 { margin: 3rem 0 1rem; font-size: 1.25rem; }
   p { margin: 0 0 1rem; }
 
@@ -65,6 +75,7 @@
 <body>
 <main>
   <header>
+    <img class="avatar" src="https://avatars.githubusercontent.com/u/1734873?v=4&amp;s=176" width="88" height="88" alt="Profile photo of Vinicius">
     <h1>Vinicius Kiatkoski Neves</h1>
     <p class="role">Senior Software Engineer at Miro · Berlin</p>
   </header>
