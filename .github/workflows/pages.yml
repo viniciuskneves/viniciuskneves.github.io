@@ -5,9 +5,20 @@
 # whenever a discussion changes, not only on pushes.
 name: Deploy site
 
-# Name discussion runs after what happened, e.g.
-# 'Discussion #3 labeled "wirwtw": WIRWTW #2'. For pushes and manual runs this
-# is empty, so GitHub keeps its default (the commit message for a push).
+# Names each run after its trigger. One example per trigger, with "WIRWTW #2"
+# standing in for the discussion title:
+#
+#   push               Update README (#6)
+#   workflow_dispatch  Deploy site
+#   created            Discussion #5 created: WIRWTW #2
+#   edited             Discussion #5 edited: WIRWTW #2
+#   deleted            Discussion #5 deleted: WIRWTW #2
+#   transferred        Discussion #5 transferred: WIRWTW #2
+#   labeled            Discussion #5 labeled "wirwtw": WIRWTW #2
+#   unlabeled          Discussion #5 unlabeled "wirwtw": WIRWTW #2
+#
+# For pushes and manual runs the expression is empty, so GitHub uses its
+# default: the first line of the commit message, or the workflow name.
 run-name: >-
   ${{ github.event_name == 'discussion' && format(
   'Discussion #{0} {1}{2}: {3}',
