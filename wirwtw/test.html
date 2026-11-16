@@ -1,0 +1,1208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detecting overlap in CSS: every rule, explained and running</title>
+<style>
+  /* =====================================================================
+     Page presentation only. Nothing in this block is part of the
+     technique; each demo's working CSS lives in its own <style data-show>
+     block next to the demo and is printed under it.
+     ===================================================================== */
+  :root {
+    color-scheme: light;
+    --ink: #1f2328;
+    --muted: #59636e;
+    --line: #d1d9e0;
+    --soft: #f6f8fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: #fff;
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 40px 20px 96px; }
+  h1 { font-size: clamp(1.8rem, 4vw, 2.4rem); line-height: 1.15; margin: 0 0 .5rem; }
+  h2 {
+    font-size: 1.45rem; line-height: 1.25;
+    margin: 3.5rem 0 .75rem; padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  h2 .num { color: deeppink; margin-right: .35em; }
+  h3 { font-size: 1.05rem; margin: 1.5rem 0 .5rem; }
+  a { color: #0969da; }
+  code { font: .88em/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  :not(pre) > code { background: #eff1f3; padding: .1em .35em; border-radius: 4px; }
+  .lede { font-size: 1.1rem; color: #3d444d; }
+
+  pre.code {
+    margin: 12px 0 0; padding: 14px 16px;
+    background: #0d1117; color: #e6edf3;
+    border-radius: 8px; overflow-x: auto;
+    font-size: 13.5px; line-height: 1.55;
+  }
+  pre.code code { font-size: inherit; }
+  pre.code .c { color: #8b949e; font-style: italic; }
+  .code-label {
+    margin: 18px 0 -4px; font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  }
+
+  .demo {
+    margin: 20px 0 0; padding: 16px;
+    border: 1px solid var(--line); border-radius: 12px; background: var(--soft);
+  }
+  .demo-title {
+    margin: 0 0 12px; font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center;
+    margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line);
+    font-size: 14px;
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 8px; }
+  .controls output { font: 13px ui-monospace, monospace; min-width: 4.5em; color: var(--muted); }
+  .controls fieldset { border: 0; padding: 0; margin: 0; display: inline-flex; flex-wrap: wrap; gap: 4px 16px; }
+  .controls legend { float: left; margin-right: 8px; }
+  .hint { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+  details { margin-top: 12px; font-size: 14px; }
+  details summary { cursor: pointer; color: var(--muted); }
+  details pre {
+    margin: 8px 0 0; padding: 12px; overflow-x: auto;
+    background: #fff; border: 1px solid var(--line); border-radius: 8px;
+    font: 12.5px/1.5 ui-monospace, monospace;
+  }
+  .callout {
+    margin: 16px 0; padding: 10px 14px;
+    border-left: 4px solid deeppink; background: #fff0f7; border-radius: 0 8px 8px 0;
+  }
+  .callout > :first-child { margin-top: 0; }
+  .callout > :last-child { margin-bottom: 0; }
+
+  .chain { list-style: none; padding: 0; margin: 16px 0; display: grid; gap: 8px; counter-reset: step; }
+  .chain li {
+    counter-increment: step;
+    display: grid; grid-template-columns: 1.6rem 1fr; gap: 6px;
+    padding: 8px 12px; background: var(--soft);
+    border: 1px solid var(--line); border-radius: 8px;
+  }
+  .chain li::before { content: counter(step); font-weight: 700; color: deeppink; }
+  .toc { columns: 2 260px; font-size: 15px; padding-left: 1.2rem; }
+
+  /* Support badges (they use the features they test) */
+  .support { list-style: none; padding: 0; margin: 12px 0; display: flex; flex-wrap: wrap; gap: 8px; --sq-test: 1; }
+  .support li { padding: 2px 12px; font-size: 14px; background: #fff; border: 1px solid var(--line); border-radius: 999px; }
+  .support .yes { display: none; color: #1a7f37; font-weight: 700; }
+  .support .no { color: #cf222e; font-weight: 700; }
+  @supports (anchor-name: --a) {
+    .support [data-f="anchor"] .yes { display: inline; }
+    .support [data-f="anchor"] .no { display: none; }
+  }
+  @supports (anchor-scope: all) {
+    .support [data-f="ascope"] .yes { display: inline; }
+    .support [data-f="ascope"] .no { display: none; }
+  }
+  @supports (animation-timeline: scroll()) {
+    .support [data-f="sda"] .yes { display: inline; }
+    .support [data-f="sda"] .no { display: none; }
+  }
+  @supports (timeline-scope: --a) {
+    .support [data-f="scope"] .yes { display: inline; }
+    .support [data-f="scope"] .no { display: none; }
+  }
+  @supports (color: hsl(from red h s l)) {
+    .support [data-f="rcs"] .yes { display: inline; }
+    .support [data-f="rcs"] .no { display: none; }
+  }
+  @container style(--sq-test: 1) {
+    .support [data-f="styleq"] .yes { display: inline; }
+    .support [data-f="styleq"] .no { display: none; }
+  }
+  .support [data-f="nesting"] {
+    & .yes { display: inline; }
+    & .no { display: none; }
+  }
+
+  /* Always-visible scrollbars, so overflow is visible even with macOS overlay scrollbars */
+  .visible-scrollbar::-webkit-scrollbar { width: 10px; height: 10px; }
+  .visible-scrollbar::-webkit-scrollbar-track { background: #eaeef2; }
+  .visible-scrollbar::-webkit-scrollbar-thumb { background: #8c959f; border-radius: 5px; border: 2px solid #eaeef2; }
+
+  .stage { position: relative; } /* containing block for every positioned demo element */
+
+  /* A CSS-drawn "plate", used as the decorative element */
+  .plate {
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 38% 42%, #f97316 0 9%, transparent 9.5%),
+      radial-gradient(circle at 61% 58%, #22c55e 0 11%, transparent 11.5%),
+      radial-gradient(circle at 57% 33%, #eab308 0 7%, transparent 7.5%),
+      radial-gradient(circle, #fff 0 52%, #e5e7eb 53% 56%, #fff 57% 68%, #d1d5db 69% 100%);
+    box-shadow: 0 6px 16px rgb(0 0 0 / .15);
+  }
+
+  /* §1 */
+  .d1 { height: 96px; padding: 8px; }
+  .d1-btn { font: inherit; padding: 6px 14px; border: 1px solid var(--ink); border-radius: 6px; background: #fff; }
+  .d1-tip { padding: 4px 10px; font-size: 13px; white-space: nowrap; color: #fff; background: var(--ink); border-radius: 6px; }
+
+  /* §2 */
+  .d2 { display: flex; align-items: center; height: 110px; padding: 0 8px; }
+  .d2-a, .d2-b {
+    flex: none; width: 80px; height: 64px; display: grid; place-items: center;
+    font-weight: 700; color: #fff; border-radius: 8px;
+  }
+  .d2-a { background: #0969da; }
+  .d2-b { background: #1a7f37; }
+  .d2-gap::before, .d2-gap::after {
+    content: ""; position: absolute; top: -6px; width: 2px; height: 14px; background: deeppink;
+  }
+  .d2-gap::before { left: 0; }
+  .d2-gap::after { right: 0; }
+
+  /* §3 */
+  .d3 { padding: 8px 4px; }
+  .d3-box { height: 56px; background: #fff; outline: 2px dashed var(--muted); outline-offset: 2px; }
+
+  /* §4 */
+  .d4a-article { padding: 0 16px 4px; font-size: 14px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+  .d4a-progress { margin: 0 -16px 8px; }
+  .d4b-box { height: 64px; background: #eaeef2; border: 2px solid #8c959f; border-radius: 6px; }
+  .d4b-content { padding: 6px 12px; line-height: 22px; font: 14px/22px ui-monospace, monospace; white-space: nowrap; }
+
+  /* §5 */
+  .d5 { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .d5-case { margin: 0; }
+  .d5-scroller { height: 120px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+  .d5-bar { height: 10px; background-color: #8c959f; }
+  .d5-tall {
+    height: 360px; padding: 8px; font-size: 13px; color: var(--muted);
+    background: repeating-linear-gradient(#fff 0 19px, #f0f2f4 19px 20px);
+  }
+  .d5-case figcaption { margin-top: 6px; font-size: 13px; }
+
+  /* §6 */
+  .d6-box { background: #fff; border: 2px solid #8c959f; border-radius: 6px; }
+  .d6-content {
+    padding: 6px 12px; font-size: 14px; line-height: 22px; white-space: nowrap;
+    background: repeating-linear-gradient(90deg, #fff 0 19px, #f0f2f4 19px 20px);
+  }
+  .d6-readout { margin: 0; padding: 8px 12px; font: 13px/1.6 ui-monospace, monospace; white-space: pre; background: #fff; }
+
+  /* §7 */
+  .d7 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .d7-case { margin: 0; }
+  .d7-case figcaption { margin-top: 6px; font-size: 13px; }
+  .d7-pair { display: flex; align-items: center; gap: 36px; }
+  .d7-left { width: 170px; height: 120px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+  .d7-tall {
+    height: 420px; padding: 8px; font-size: 13px; color: var(--muted);
+    background: repeating-linear-gradient(#fff 0 19px, #f0f2f4 19px 20px);
+  }
+  .d7-right { width: 80px; height: 80px; background-color: #8c959f; border-radius: 14px; }
+
+  /* §8 */
+  .d8 { display: flex; gap: 24px; }
+  .d8-left { width: 180px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+  .d8-content {
+    padding: 8px; font-size: 13px; color: var(--muted);
+    background: repeating-linear-gradient(#fff 0 19px, #f0f2f4 19px 20px);
+  }
+  .d8-right { flex: 1; display: grid; place-items: center; font: 14px ui-monospace, monospace; border-radius: 8px; }
+
+  /* §9 */
+  .d9 { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+  .d9-swatch { height: 84px; display: flex; align-items: flex-end; padding: 6px; border: 1px solid var(--line); border-radius: 8px; }
+  .d9-swatch span { padding: 1px 6px; font: 12px ui-monospace, monospace; background: rgb(255 255 255 / .9); border-radius: 4px; }
+
+  /* §10 */
+  .d10-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .d10-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+
+  /* §11 */
+  .d11 { display: grid; gap: 14px; }
+  .d11-case { margin: 0; }
+  .d11-case figcaption { margin-top: 4px; font-size: 13px; }
+  .d11-stage { height: 150px; padding: 16px 0; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+  .d11-plate { top: 16px; left: 8px; width: 110px; height: 110px; }
+  .d11-wall {
+    width: 170px; height: 118px; display: grid; place-items: center;
+    color: #fff; font-weight: 600; background: #0969da; border-radius: 8px;
+  }
+  .d11-measure { outline: 1px dashed deeppink; }
+  .d11-measure::after { background: deeppink; }
+  .d11-readout {
+    position: absolute; right: 8px; bottom: 4px; margin: 0;
+    font: 13px ui-monospace, monospace; color: var(--muted);
+  }
+
+  /* Final demo */
+  .ov-stage { min-height: 240px; padding: 24px 0; background: #fffaf3; border-radius: 8px; }
+  .ov-decor { transition: opacity .25s; }
+  .ov-section {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px;
+    padding-right: 12px;
+  }
+  .ov-card { padding: 8px; font-size: 13px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+  .ov-card h4 { margin: 6px 0 2px; font-size: 14px; }
+  .ov-card p { margin: 0; color: var(--muted); }
+  .ov-img { height: 56px; border-radius: 6px; background: linear-gradient(135deg, #ffd6e8, #c8e1ff); }
+  #ov-demo:has(#ov-debug:checked) .ov-measure { outline: 2px dashed deeppink; outline-offset: -1px; }
+  #ov-demo:has(#ov-debug:checked) .ov-measure::after { background: deeppink; }
+  .ov-readout {
+    position: absolute; right: 8px; bottom: 4px; margin: 0;
+    font: 13px ui-monospace, monospace; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Detecting overlap in CSS</h1>
+<p class="lede">
+  Every CSS rule from Ahmad Shadeed's article
+  <a href="https://ishadeed.com/article/css-detect-overlap/">on detecting overlap with CSS</a>,
+  explained, each with its own working example.
+</p>
+<p>
+  The article hides a decorative image once it runs into a section, without media queries or JavaScript.
+  CSS has no "do these overlap?" check, so the article links several features into a chain.
+  The only JavaScript on this page copies slider values into CSS custom properties and prints the code blocks.
+  All detection is done in CSS.
+</p>
+
+<p><strong>Your browser supports:</strong></p>
+<ul class="support">
+  <li data-f="anchor">Anchor positioning <span class="yes">✓</span><span class="no">✗</span></li>
+  <li data-f="ascope"><code>anchor-scope</code> (§11 only) <span class="yes">✓</span><span class="no">✗</span></li>
+  <li data-f="sda">Scroll-driven animations <span class="yes">✓</span><span class="no">✗</span></li>
+  <li data-f="scope"><code>timeline-scope</code> <span class="yes">✓</span><span class="no">✗</span></li>
+  <li data-f="styleq">Style queries <span class="yes">✓</span><span class="no">✗</span></li>
+  <li data-f="rcs">Relative colors <span class="yes">✓</span><span class="no">✗</span></li>
+  <li data-f="nesting">CSS nesting <span class="yes">✓</span><span class="no">✗</span></li>
+</ul>
+<p class="hint">Demos that depend on a ✗ feature won't react. Every badge tests the feature itself.</p>
+
+<h3>How the pieces fit</h3>
+<ol class="chain">
+  <li><span><strong>Anchor positioning</strong>: an invisible <code>.measure</code> box stretches across the gap between <code>.decor</code> and <code>.section</code> (§1–2).</span></li>
+  <li><span><strong>Gap &lt; 20px</strong>: <code>.measure</code>'s 20px-wide child no longer fits, so <code>.measure</code> becomes scrollable (§3).</span></li>
+  <li><span><strong>Scrollable</strong>: <code>.measure</code>'s <code>scroll-timeline</code> switches from inactive to active (§4).</span></li>
+  <li><span><strong>Active timeline</strong>: an animation sets <code>--touching: 1</code> on <code>&lt;body&gt;</code> (§5–8).</span></li>
+  <li><span><strong><code>--touching: 1</code></strong>: <code>@container style(--touching: 1)</code> hides <code>.decor</code> (§10–11).</span></li>
+</ol>
+
+<ol class="toc">
+  <li><a href="#s1"><code>anchor-name</code></a></li>
+  <li><a href="#s2"><code>position: absolute</code> + <code>anchor()</code></a></li>
+  <li><a href="#s3"><code>overflow-x: auto</code> + <code>::after</code></a></li>
+  <li><a href="#s4"><code>scroll-timeline</code></a></li>
+  <li><a href="#s5"><code>animation</code> + <code>animation-timeline</code></a></li>
+  <li><a href="#s6"><code>@keyframes</code> with <code>from, to</code></a></li>
+  <li><a href="#s7"><code>timeline-scope</code></a></li>
+  <li><a href="#s8">Custom properties + <code>var()</code></a></li>
+  <li><a href="#s9">Relative colors: <code>hsl(from …)</code></a></li>
+  <li><a href="#s10">Nesting + <code>@container style()</code></a></li>
+  <li><a href="#s11"><code>opacity: 0</code> vs <code>display: none</code></a></li>
+  <li><a href="#all">Putting it all together</a></li>
+</ol>
+
+<!-- ================================================================== -->
+<h2 id="s1"><span class="num">1</span><code>anchor-name</code></h2>
+<p>
+  <code>anchor-name</code> gives an element a name, which must start with <code>--</code>.
+  Absolutely positioned elements can then position themselves relative to it, wherever it sits in the DOM.
+</p>
+<ul>
+  <li>One element can have several names: <code>anchor-name: --a, --b;</code>.</li>
+  <li>The anchor must be laid out before the element that uses it.
+    If the anchor is itself absolutely positioned, it has to come earlier in the DOM.</li>
+  <li>If several elements share a name, the last suitable one in DOM order wins (unless you limit it with <code>anchor-scope</code>).
+    That's why every demo on this page uses its own names.</li>
+</ul>
+<p class="code-label">In the article</p>
+<pre class="code">
+.decor   { anchor-name: --line; }
+.section { anchor-name: --section; }
+</pre>
+
+<div class="demo">
+  <p class="demo-title">Example: a tooltip that follows its button</p>
+  <div class="stage d1" id="d1" data-show-html>
+    <button class="d1-btn" type="button">Save</button>
+    <div class="d1-tip">Saves your draft</div>
+  </div>
+  <div class="controls">
+    <label>Move the button <input type="range" min="0" max="360" value="40" data-var="--x" data-unit="px" data-target="#d1"><output></output></label>
+  </div>
+</div>
+<style data-show>
+  .d1-btn {
+    anchor-name: --d1-btn;
+    margin-left: var(--x);                      /* set by the slider */
+  }
+  .d1-tip {
+    position: absolute;
+    top: calc(anchor(--d1-btn bottom) + 8px);   /* 8px below the button */
+    left: anchor(--d1-btn left);                /* left edges aligned */
+  }
+</style>
+
+<!-- ================================================================== -->
+<h2 id="s2"><span class="num">2</span><code>position: absolute</code> + the <code>anchor()</code> function</h2>
+<p>
+  <code>anchor(&lt;name&gt; &lt;side&gt;)</code> only works in inset properties (<code>top</code>, <code>right</code>,
+  <code>bottom</code>, <code>left</code>, <code>inset-*</code>) of an absolutely or fixed positioned element.
+  Read it as "this edge of me goes to that edge of the anchor."
+</p>
+<p>
+  If you set both <code>left</code> and <code>right</code> and leave <code>width</code> as <code>auto</code>, the box stretches between them,
+  so its width is exactly the gap. If the elements overlap, the width collapses to 0.
+</p>
+<p>
+  The browser handles the conversion for you. <code>right: anchor(--section left)</code> becomes "the distance from the
+  containing block's right edge to the section's left edge."
+</p>
+<p>
+  Other side values are <code>center</code>, <code>start</code>, <code>end</code>, <code>self-start</code>, <code>self-end</code>
+  and percentages (<code>anchor(--a 25%)</code>).
+  You can add a fallback for when the anchor is missing: <code>left: anchor(--a right, 0px)</code>.
+  <code>anchor()</code> also works inside <code>calc()</code>, as in §1.
+</p>
+<p class="code-label">In the article</p>
+<pre class="code">
+.measure {
+  position: absolute;
+  left:   anchor(--line right);     /* start where .decor ends */
+  right:  anchor(--section left);   /* stop where .section starts */
+  top:    anchor(--line top);       /* same vertical band as .decor */
+  bottom: anchor(--line bottom);
+}
+</pre>
+
+<div class="demo">
+  <p class="demo-title">Example: a ruler stretched between two boxes</p>
+  <div class="stage d2" id="d2" data-show-html>
+    <div class="d2-a">A</div>
+    <div class="d2-b">B</div>
+    <div class="d2-gap"></div>
+  </div>
+  <div class="controls">
+    <label>Move B <input type="range" min="-60" max="320" value="180" data-var="--x" data-unit="px" data-target="#d2"><output></output></label>
+  </div>
+  <p class="hint">The pink ruler is always exactly as wide as the gap. Push B onto A and it shrinks to nothing.</p>
+</div>
+<style data-show>
+  .d2-a { anchor-name: --d2-a; }
+  .d2-b { anchor-name: --d2-b; margin-left: var(--x); }   /* slider */
+
+  .d2-gap {
+    position: absolute;
+    left:   anchor(--d2-a right);          /* my left edge  → A's right edge */
+    right:  anchor(--d2-b left);           /* my right edge → B's left edge  */
+    top:    calc(anchor(--d2-a center) - 1px);
+    height: 2px;                           /* width stays auto → stretches */
+    background: deeppink;
+  }
+</style>
+
+<!-- ================================================================== -->
+<h2 id="s3"><span class="num">3</span>Making overflow the trigger: <code>overflow-x: auto</code> + <code>::after</code></h2>
+<ul>
+  <li><code>overflow-x: auto</code> makes the element a <em>scroll container</em>. Content wider than the box becomes
+    scrollable instead of spilling out.</li>
+  <li>A fixed-width pseudo-element acts as a sensor. If the box is at least as wide as the sensor, nothing scrolls.
+    If the box is narrower, or has collapsed to 0 because the elements overlap, the box overflows and becomes scrollable.</li>
+  <li><code>content: ""</code> is required, or the pseudo-element isn't created. <code>display: block</code> lets
+    <code>width</code>/<code>height</code> apply.</li>
+  <li>To change how close the elements can get before the image hides, change the sensor's <code>width</code>.</li>
+  <li><code>:after</code> is the old CSS2 spelling; <code>::after</code> is the modern one. Both work.</li>
+</ul>
+<p class="code-label">In the article</p>
+<pre class="code">
+.measure { overflow-x: auto; }
+
+.measure:after {
+  content: "";
+  display: block;
+  width: 20px;                  /* the threshold */
+  height: 100%;
+  background-color: deeppink;   /* only so you can see it in the demo */
+}
+</pre>
+
+<div class="demo">
+  <p class="demo-title">Example: a 150px sensor inside a resizable box</p>
+  <div class="stage d3" id="d3" data-show-html>
+    <div class="d3-box visible-scrollbar"></div>
+  </div>
+  <div class="controls">
+    <label>Box width <input type="range" min="60" max="260" value="200" data-var="--w" data-unit="px" data-target="#d3"><output></output></label>
+  </div>
+  <p class="hint">Go below 150px: the pink sensor gets clipped and a scrollbar appears. That's the overflow the technique detects.</p>
+</div>
+<style data-show>
+  .d3-box {
+    width: var(--w);            /* slider */
+    overflow-x: auto;           /* wider content becomes scrollable */
+  }
+  .d3-box::after {
+    content: "";                /* required to create the pseudo-element */
+    display: block;             /* so width/height apply */
+    width: 150px;               /* the sensor = the threshold */
+    height: 100%;
+    background-color: deeppink;
+  }
+</style>
+
+<!-- ================================================================== -->
+<h2 id="s4"><span class="num">4</span><code>scroll-timeline</code></h2>
+<p>
+  <code>scroll-timeline</code> turns a scroll container into a named timeline. Its progress runs from 0% to 100% as you scroll
+  from start to end. It's shorthand for <code>scroll-timeline-name</code> and <code>scroll-timeline-axis</code>.
+</p>
+<ul>
+  <li><strong>Axis values:</strong> <code>block</code> (default), <code>inline</code>, <code>x</code>, <code>y</code>.</li>
+  <li>The article needs <code>x</code> because <code>.measure</code> only overflows horizontally. With the default
+    <code>block</code> axis, there's no vertical overflow, so nothing would ever trigger.</li>
+</ul>
+<div class="callout">
+  <p><strong>The technique depends on one rule:</strong> if the element has no scrollable overflow on that axis, the
+    timeline is <em>inactive</em>, and animations attached to it don't apply.</p>
+  <p>So "is the timeline active?" means the same as "does this element overflow?" Nobody has to scroll.</p>
+</div>
+<p class="code-label">In the article</p>
+<pre class="code">
+.section-item-left { scroll-timeline: --box; }      /* axis defaults to block (vertical) */
+.measure           { scroll-timeline: --touch x; }  /* horizontal axis */
+</pre>
+
+<div class="demo">
+  <p class="demo-title">Example A: a reading progress bar</p>
+  <div class="stage d4a" data-show-html>
+    <div class="d4a-article visible-scrollbar">
+      <div class="d4a-progress"></div>
+      <p>Scroll this box. The pink bar at the top is driven by this element's scroll position, not by time.</p>
+      <p>A scroll timeline maps the scroll range onto an animation: the top of the scroll range is 0%, and the end is 100%.</p>
+      <p>The bar uses <code>position: sticky</code> so it stays at the top while the text scrolls underneath it.</p>
+      <p><code>transform-origin: left</code> makes <code>scaleX()</code> grow the bar from the left edge.</p>
+      <p>Because it's an animation, you can drive any animatable property this way: colors, transforms, custom properties.</p>
+      <p>You've reached the end, so the bar should now be full.</p>
+    </div>
+  </div>
+</div>
+<style data-show>
+  .d4a-article {
+    height: 160px;
+    overflow-y: auto;
+    scroll-timeline: --d4-read;        /* axis: block (vertical) by default */
+  }
+  .d4a-progress {
+    position: sticky;
+    top: 0;
+    height: 4px;
+    background: deeppink;
+    transform-origin: left;
+    animation: d4-grow 1ms linear;
+    animation-timeline: --d4-read;     /* progress = scroll position */
+  }
+  @keyframes d4-grow {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+</style>
+
+<div class="demo" id="d4b-demo">
+  <p class="demo-title">Example B: active vs. inactive (the trick)</p>
+  <div class="stage d4b" id="d4b" data-show-html>
+    <div class="d4b-box visible-scrollbar">
+      <div class="d4b-content"></div>
+    </div>
+  </div>
+  <div class="controls">
+    <label>Box width <input type="range" min="80" max="360" value="300" data-var="--w" data-unit="px" data-target="#d4b"><output></output></label>
+    <fieldset>
+      <legend>Axis</legend>
+      <label><input type="radio" name="d4b-axis" id="d4b-x" checked> <code>x</code></label>
+      <label><input type="radio" name="d4b-axis" id="d4b-block"> <code>block</code></label>
+    </fieldset>
+  </div>
+  <p class="hint">
+    The content is 240px wide. Make the box narrower: it overflows, the timeline turns active and the box turns green.
+    You don't need to scroll. Switch the axis to <code>block</code> and the box never turns green, because it never overflows vertically.
+  </p>
+</div>
+<style data-show>
+  .d4b-box {
+    width: var(--w);                   /* slider */
+    overflow-x: auto;
+    scroll-timeline: --d4-self x;      /* horizontal axis */
+    animation: d4-active 1ms linear;   /* the box animates itself… */
+    animation-timeline: --d4-self;     /* …with its own timeline */
+  }
+  .d4b-content { width: 240px; }
+  .d4b-content::before { content: "timeline: " var(--d4-state, "inactive"); }
+
+  @keyframes d4-active {
+    from, to {
+      --d4-state: "ACTIVE";
+      background-color: palegreen;
+      border-color: green;
+    }
+  }
+
+  /* demo toggle */
+  #d4b-demo:has(#d4b-block:checked) .d4b-box { scroll-timeline-axis: block; }
+</style>
+
+<!-- ================================================================== -->
+<h2 id="s5"><span class="num">5</span><code>animation</code> + <code>animation-timeline</code></h2>
+<p>
+  <code>animation-timeline</code> replaces the normal clock with a timeline. Here, that's a named scroll timeline.
+  Two things to know:
+</p>
+<ul>
+  <li><strong>Order matters.</strong> The <code>animation</code> shorthand resets <code>animation-timeline</code> to
+    <code>auto</code>, so write <code>animation-timeline</code> <em>after</em> it. The article does this correctly.</li>
+  <li><strong>Why <code>1ms</code>?</strong> The article doesn't explain it. With a scroll timeline, a duration isn't real time.
+    It's turned into a share of the scroll range, so a single animation fills the whole range whatever number you write.
+    <code>1ms</code> just has to be non-zero: an explicit <code>0s</code> gives the animation no length, so it can't follow
+    the scroll (box C below). Newer specs let you write <code>auto</code> for the same effect, but a small fixed duration
+    is the widely compatible habit.</li>
+  <li><code>linear</code> only matters for animations that should track the scroll, like the bars below.</li>
+</ul>
+<p class="code-label">In the article</p>
+<pre class="code">
+.section-item-right {
+  animation: reveal 1ms linear;
+  animation-timeline: --box;
+}
+</pre>
+
+<div class="demo">
+  <p class="demo-title">Example: the same scroll-linked bar, four ways</p>
+  <div class="stage d5" data-show-html>
+    <figure class="d5-case d5-a">
+      <div class="d5-scroller visible-scrollbar"><div class="d5-bar"></div><div class="d5-tall">scroll ↓</div></div>
+      <figcaption>A. <code>1ms</code>: follows the scroll</figcaption>
+    </figure>
+    <figure class="d5-case d5-b">
+      <div class="d5-scroller visible-scrollbar"><div class="d5-bar"></div><div class="d5-tall">scroll ↓</div></div>
+      <figcaption>B. <code>10s</code>: identical to A</figcaption>
+    </figure>
+    <figure class="d5-case d5-c">
+      <div class="d5-scroller visible-scrollbar"><div class="d5-bar"></div><div class="d5-tall">scroll ↓</div></div>
+      <figcaption>C. explicit <code>0s</code>: ignores the scroll</figcaption>
+    </figure>
+    <figure class="d5-case d5-d">
+      <div class="d5-scroller visible-scrollbar"><div class="d5-bar"></div><div class="d5-tall">scroll ↓</div></div>
+      <figcaption>D. wrong order: runs on the clock</figcaption>
+    </figure>
+  </div>
+  <p class="hint">Scroll each box and compare. Grey means the animation isn't applied.</p>
+</div>
+<style data-show>
+  .d5-scroller { overflow-y: auto; }
+  .d5-bar { position: sticky; top: 0; transform-origin: left; }
+
+  @keyframes d5-grow {
+    from { transform: scaleX(0); background-color: deeppink; }
+    to   { transform: scaleX(1); background-color: deeppink; }
+  }
+
+  /* A: the article's pattern */
+  .d5-a .d5-scroller { scroll-timeline: --d5-a; }
+  .d5-a .d5-bar {
+    animation: d5-grow 1ms linear;
+    animation-timeline: --d5-a;
+  }
+
+  /* B: 10s instead of 1ms. Same result: the duration becomes "the whole scroll range" */
+  .d5-b .d5-scroller { scroll-timeline: --d5-b; }
+  .d5-b .d5-bar {
+    animation: d5-grow 10s linear;
+    animation-timeline: --d5-b;
+  }
+
+  /* C: explicit 0s gives the animation zero length, so it can't follow the scroll */
+  .d5-c .d5-scroller { scroll-timeline: --d5-c; }
+  .d5-c .d5-bar {
+    animation: d5-grow 0s linear;
+    animation-timeline: --d5-c;
+  }
+
+  /* D: wrong order. The shorthand comes second and resets animation-timeline to auto */
+  .d5-d .d5-scroller { scroll-timeline: --d5-d; }
+  .d5-d .d5-bar {
+    animation-timeline: --d5-d;              /* ✗ overwritten by the next line */
+    animation: d5-grow 3s linear infinite;   /* → plays on the normal clock */
+  }
+</style>
+
+<!-- ================================================================== -->
+<h2 id="s6"><span class="num">6</span><code>@keyframes</code> with <code>from, to</code>: an animation used as an on/off switch</h2>
+<ul>
+  <li><code>from, to</code> means <code>0%, 100%</code>. With identical values at both ends, the value is the same at
+    every point on the timeline. Scroll position doesn't matter, only whether the animation is <em>running</em>.
+    <ul>
+      <li>Timeline active (overflowing): the animation applies, so the property is <code>1</code>.</li>
+      <li>Timeline inactive (not overflowing): the animation doesn't apply, the normal declaration wins, so it's <code>0</code>.</li>
+    </ul>
+  </li>
+  <li>Keyframes can set custom properties without <code>@property</code>. Unregistered properties change abruptly at the
+    halfway point, which doesn't matter here because both ends are equal.</li>
+  <li>For contrast, the demo also has a second animation with <em>different</em> ends. It's registered with
+    <code>@property</code> as an integer so it can interpolate, and it tracks the scroll position.</li>
+</ul>
+<p class="code-label">In the article</p>
+<pre class="code">
+@keyframes flip-touch {
+  from, to { --touching: 1; }
+}
+</pre>
+
+<div class="demo">
+  <p class="demo-title">Example: switch vs. progress on the same timeline</p>
+  <div class="stage d6" id="d6" data-show-html>
+    <div class="d6-box visible-scrollbar">
+      <p class="d6-readout"></p>
+      <div class="d6-content">300px of content ··· keep going ··· the end →</div>
+    </div>
+  </div>
+  <div class="controls">
+    <label>Box width <input type="range" min="120" max="420" value="360" data-var="--w" data-unit="px" data-target="#d6"><output></output></label>
+  </div>
+  <p class="hint">
+    Shrink the box below ~300px, then scroll it. <code>--d6-switch</code> jumps to 1 and stays there wherever you scroll.
+    <code>--d6-progress</code> follows the scroll position.
+  </p>
+</div>
+<style data-show>
+  @property --d6-progress {            /* registered so it can interpolate */
+    syntax: "<integer>";
+    inherits: true;
+    initial-value: 0;
+  }
+
+  .d6-box {
+    --d6-switch: 0;                     /* value while the timeline is inactive */
+    width: var(--w);                    /* slider */
+    overflow-x: auto;
+    scroll-timeline: --d6 x;
+    animation: d6-switch 1ms linear, d6-progress 1ms linear;
+    animation-timeline: --d6;           /* one value → used by both animations */
+  }
+  .d6-content { width: 300px; }
+
+  /* identical ends → constant while running = a switch */
+  @keyframes d6-switch {
+    from, to { --d6-switch: 1; }
+  }
+  /* different ends → follows the scroll position */
+  @keyframes d6-progress {
+    from { --d6-progress: 0; }
+    to   { --d6-progress: 100; }
+  }
+
+  /* print both values with CSS counters; sticky so it stays in view while you scroll */
+  .d6-readout {
+    position: sticky;
+    left: 0;
+    counter-reset: sw var(--d6-switch) pr var(--d6-progress);
+  }
+  .d6-readout::before {
+    content: "--d6-switch:   " counter(sw) "\A--d6-progress: " counter(pr) "%";
+  }
+</style>
+
+<!-- ================================================================== -->
+<h2 id="s7"><span class="num">7</span><code>timeline-scope</code></h2>
+<p>
+  By default, a named scroll timeline is only visible to the element that declares it and that element's descendants.
+  Siblings and ancestors can't see it. Setting <code>timeline-scope</code> on a shared ancestor makes the name available to
+  everything inside that ancestor.
+</p>
+<p>
+  The final technique uses this to move the switch up to the top of the page.
+  The timeline is defined deep inside, on <code>.measure</code>, but the animation runs on <code>&lt;body&gt;</code>.
+  So <code>--touching</code> is set on <code>&lt;body&gt;</code> and every element inherits it, including <code>.decor</code>.
+</p>
+<p class="code-label">In the article</p>
+<pre class="code">
+/* sibling access */
+.section { timeline-scope: --box; }
+
+/* the final technique: hoisted all the way up */
+body {
+  --touching: 0;
+  timeline-scope: --touch;            /* defined deep inside, on .measure */
+  animation: flip-touch 1ms linear;   /* but runs on body itself */
+  animation-timeline: --touch;
+}
+</pre>
+
+<div class="callout">
+  <p><strong>A Chrome quirk I found while testing (Chrome 157):</strong> when an animation reaches its timeline through
+    <code>timeline-scope</code>, it stops applying at the <em>very</em> end of the scroll range. Scroll the left box below
+    all the way down and the square drops back to grey.</p>
+  <p>This doesn't affect the technique, because nobody scrolls <code>.measure</code>.
+    Animating the scroller itself, or one of its descendants, doesn't have this problem (§4 and §6).</p>
+</div>
+
+<div class="demo">
+  <p class="demo-title">Example: scroll one box, animate its sibling</p>
+  <div class="stage d7" data-show-html>
+    <figure class="d7-case d7-with">
+      <div class="d7-pair">
+        <div class="d7-left visible-scrollbar"><div class="d7-tall">Scroll me ↓</div></div>
+        <div class="d7-right"></div>
+      </div>
+      <figcaption>With <code>timeline-scope</code> on the parent</figcaption>
+    </figure>
+    <figure class="d7-case d7-without">
+      <div class="d7-pair">
+        <div class="d7-left visible-scrollbar"><div class="d7-tall">Scroll me ↓</div></div>
+        <div class="d7-right"></div>
+      </div>
+      <figcaption>Without it: the sibling can't see <code>--d7</code></figcaption>
+    </figure>
+  </div>
+  <p class="hint">Both pairs have identical CSS except for one line. Only the left square follows the scroll. The right one can't find <code>--d7</code>, so it stays frozen on its first keyframe.</p>
+</div>
+<style data-show>
+  .d7-with .d7-pair { timeline-scope: --d7; }     /* shared parent */
+  /* .d7-without .d7-pair: no timeline-scope */
+
+  .d7-left {
+    overflow-y: auto;
+    scroll-timeline: --d7;                        /* defines the timeline */
+  }
+  .d7-right {
+    animation: d7-spin 1ms linear;
+    animation-timeline: --d7;                     /* a sibling uses it */
+  }
+  @keyframes d7-spin {
+    from { rotate: 0deg;   background-color: deeppink; }
+    to   { rotate: 360deg; background-color: rebeccapurple; }
+  }
+</style>
+
+<!-- ================================================================== -->
+<h2 id="s8"><span class="num">8</span>Custom properties + <code>var()</code></h2>
+<ul>
+  <li>A custom property declared on a parent is inherited by every descendant.</li>
+  <li>An animation can override it on a single element, because animation values beat normal declarations in the cascade.</li>
+  <li><code>var(--x, fallback)</code> lets you supply a default value.</li>
+</ul>
+<p>
+  This example is the article's own side demo: <code>.box-right</code> is grey, and it turns pink while <code>.box-left</code> overflows.
+</p>
+<p class="code-label">In the article</p>
+<pre class="code">
+.section   { --bg-color: lightgrey; timeline-scope: --bg; }
+.box-left  { scroll-timeline: --bg; }
+.box-right {
+  background-color: var(--bg-color);
+  animation: change-bg 1ms linear;
+  animation-timeline: --bg;
+}
+</pre>
+
+<div class="demo">
+  <p class="demo-title">Example: flip a sibling's color when a box overflows</p>
+  <div class="stage d8" id="d8" data-show-html>
+    <div class="d8-left visible-scrollbar"><div class="d8-content">box-left</div></div>
+    <div class="d8-right">background-color: var(--bg-color)</div>
+  </div>
+  <div class="controls">
+    <label>Content height <input type="range" min="40" max="240" value="80" data-var="--h" data-unit="px" data-target="#d8"><output></output></label>
+  </div>
+  <p class="hint">
+    Make the content taller than the 120px box: the left box overflows and the right box turns pink.
+    If you then scroll the left box all the way to the bottom, the right box goes grey again. That's the Chrome quirk from §7.
+  </p>
+</div>
+<style data-show>
+  .d8 {
+    --bg-color: lightgrey;          /* default, inherited by both boxes */
+    timeline-scope: --d8;
+  }
+  .d8-left {
+    height: 120px;
+    overflow-y: auto;
+    scroll-timeline: --d8;          /* block axis */
+  }
+  .d8-content { height: var(--h); } /* slider */
+
+  .d8-right {
+    background-color: var(--bg-color);
+    animation: d8-change-bg 1ms linear;
+    animation-timeline: --d8;
+  }
+  @keyframes d8-change-bg {
+    from, to { --bg-color: hsl(from deeppink h s calc(l + 30)); }
+  }
+</style>
+
+<!-- ================================================================== -->
+<h2 id="s9"><span class="num">9</span>Relative color syntax: <code>hsl(from …)</code> + <code>calc()</code></h2>
+<p>
+  <code>from &lt;color&gt;</code> splits a color into channels (<code>h</code>, <code>s</code>, <code>l</code> in HSL) that you
+  can reuse or adjust. Deeppink is about <code>hsl(328 100% 54%)</code>, so <code>hsl(from deeppink h s calc(l + 30))</code>
+  keeps the hue and saturation and gives 84% lightness, a light pink.
+</p>
+<p>
+  The channel names stand for plain numbers, so you write <code>calc(l + 30)</code>, not <code>30%</code>.
+  You can also convert between color spaces: <code>rgb(from …)</code> gives you <code>r g b</code>, and <code>oklch(from …)</code> gives you <code>l c h</code>.
+</p>
+<p class="code-label">In the article</p>
+<pre class="code">
+hsl(from deeppink h s calc(l + 30))
+</pre>
+
+<div class="demo">
+  <p class="demo-title">Example: a palette derived from one color</p>
+  <div class="stage d9" id="d9" data-show-html>
+    <div class="d9-swatch d9-base"><span>base</span></div>
+    <div class="d9-swatch d9-light"><span>l + 30</span></div>
+    <div class="d9-swatch d9-dark"><span>l − 20</span></div>
+    <div class="d9-swatch d9-alpha"><span>alpha 0.2</span></div>
+    <div class="d9-swatch d9-comp"><span>h + 180</span></div>
+    <div class="d9-swatch d9-muted"><span>s × 0.3</span></div>
+  </div>
+  <div class="controls">
+    <label>Base color <input type="color" value="#ff1493" data-var="--brand" data-target="#d9"><output></output></label>
+  </div>
+</div>
+<style data-show>
+  .d9 { --brand: deeppink; }   /* the color picker overrides this */
+
+  .d9-base  { background-color: var(--brand); }
+  .d9-light { background-color: hsl(from var(--brand) h s calc(l + 30)); }        /* lighter */
+  .d9-dark  { background-color: hsl(from var(--brand) h s calc(l - 20)); }        /* darker */
+  .d9-alpha { background-color: rgb(from var(--brand) r g b / 0.2); }             /* translucent */
+  .d9-comp  { background-color: hsl(from var(--brand) calc(h + 180) s l); }       /* opposite hue */
+  .d9-muted { background-color: hsl(from var(--brand) h calc(s * 0.3) l); }       /* desaturated */
+</style>
+
+<!-- ================================================================== -->
+<h2 id="s10"><span class="num">10</span>CSS nesting + <code>@container style()</code></h2>
+<p>This rule combines two features:</p>
+<ul>
+  <li><strong>Nesting:</strong> an at-rule placed inside a style rule. Declarations inside it apply to the outer selector.
+    <code>.decor { @container style(--touching: 1) { opacity: 0; } }</code> is the same as
+    <code>@container style(--touching: 1) { .decor { opacity: 0; } }</code>.</li>
+  <li><strong>Style container query:</strong>
+    <ul>
+      <li>It checks the computed value of a custom property on an ancestor, instead of the ancestor's size.</li>
+      <li>Unlike size queries, it needs no <code>container-type</code>, because every element is a style container by default.</li>
+      <li>It checks the nearest ancestor (the parent, here), <em>never the element itself</em>. That works because
+        <code>--touching</code> is inherited from <code>&lt;body&gt;</code>.</li>
+      <li>It works only with custom properties. Queries like <code>style(display: flex)</code> aren't supported.</li>
+      <li>You can combine conditions: <code>style(--a: 1) and style(--b: 2)</code>.</li>
+    </ul>
+  </li>
+</ul>
+<p class="code-label">In the article</p>
+<pre class="code">
+.decor {
+  @container style(--touching: 1) {
+    opacity: 0;
+  }
+}
+</pre>
+
+<div class="demo" id="d10-demo">
+  <p class="demo-title">Example: cards that react to a parent's custom property</p>
+  <div class="stage d10" data-show-html>
+    <ul class="d10-list">
+      <li class="d10-card">Card one</li>
+      <li class="d10-card">Card two</li>
+      <li class="d10-card" style="--density: compact">Card three sets <code>--density: compact</code> on itself, but its own query ignores that</li>
+    </ul>
+  </div>
+  <div class="controls">
+    <label><input type="checkbox" id="d10-compact"> Set <code>--density: compact</code> on the list</label>
+  </div>
+  <p class="hint">Card three only turns compact when the <em>list</em> gets the value. A style query never checks the element itself.</p>
+</div>
+<style data-show>
+  .d10-card {
+    padding: 16px;
+    font-size: 16px;
+
+    /* nested: these declarations apply to .d10-card */
+    @container style(--density: compact) {
+      padding: 4px 8px;
+      font-size: 13px;
+      background: #fff0f7;
+    }
+  }
+
+  /* demo toggle */
+  #d10-demo:has(#d10-compact:checked) .d10-list { --density: compact; }
+</style>
+
+<!-- ================================================================== -->
+<h2 id="s11"><span class="num">11</span><code>opacity: 0</code> rather than <code>display: none</code></h2>
+<p>
+  The article hides the image with <code>opacity: 0</code>, which keeps its box.
+  This matters because <code>.decor</code> is also the <code>--line</code> anchor that <code>.measure</code> is stretched from.
+  With <code>display: none</code>, the box disappears, and the anchor goes with it. That creates a loop:
+</p>
+<ol>
+  <li>The plate is hidden, so its anchor is gone and <code>.measure</code> can no longer span the gap.</li>
+  <li><code>.measure</code> shrinks to its 20px content and stops overflowing, so the switch goes back to 0.</li>
+  <li>The plate comes back, <code>.measure</code> overflows again, and the plate is hidden again…</li>
+</ol>
+<p>
+  Chrome breaks the loop by settling on one state. In my tests (Chrome 157) that was sometimes "hidden" and sometimes
+  "visible while overlapping", depending on timing. Either way, the result no longer reflects the layout.
+</p>
+<p>
+  <code>opacity: 0</code> and <code>visibility: hidden</code> both keep the box and the anchor in place, so the measurement stays stable.
+</p>
+<p>
+  The demo runs the same chain twice, side by side. The only difference is how the plate is hidden.
+  Both stages reuse the same anchor and timeline names: <code>anchor-scope: all</code> and <code>timeline-scope</code>
+  keep each stage's names to itself.
+</p>
+
+<div class="demo">
+  <p class="demo-title">Example: the full chain, hidden two ways</p>
+  <div class="d11" id="d11" data-show-html>
+    <figure class="d11-case d11-opacity">
+      <div class="stage d11-stage">
+        <div class="plate d11-plate"></div>
+        <div class="d11-measure"></div>
+        <div class="d11-wall">section</div>
+        <p class="d11-readout"></p>
+      </div>
+      <figcaption><code>opacity: 0</code> (the article's choice)</figcaption>
+    </figure>
+    <figure class="d11-case d11-display">
+      <div class="stage d11-stage">
+        <div class="plate d11-plate"></div>
+        <div class="d11-measure"></div>
+        <div class="d11-wall">section</div>
+        <p class="d11-readout"></p>
+      </div>
+      <figcaption><code>display: none</code></figcaption>
+    </figure>
+  </div>
+  <div class="controls">
+    <label>Move both sections <input type="range" min="40" max="360" value="240" data-var="--x" data-unit="px" data-target="#d11"><output></output></label>
+  </div>
+  <p class="hint">
+    Drag the slider toward the plates a few times. The top plate hides every time the gap drops under 20px.
+    The bottom one is unpredictable: it may stay visible while overlapping, or vanish and take the measurement with it.
+    Its readout shows which state Chrome settled on.
+  </p>
+</div>
+<style data-show>
+  .d11-stage {
+    anchor-scope: all;                 /* anchor names stay inside each stage */
+    timeline-scope: --d11;             /* so does the timeline name */
+    --d11-touching: 0;
+    animation: d11-flip 1ms linear;
+    animation-timeline: --d11;
+  }
+  .d11-plate { anchor-name: --d11-plate; position: absolute; }
+  .d11-wall  { anchor-name: --d11-wall; margin-left: var(--x); }   /* slider */
+
+  .d11-measure {
+    position: absolute;
+    left:   anchor(--d11-plate right);
+    right:  anchor(--d11-wall left);
+    top:    anchor(--d11-plate top);
+    bottom: anchor(--d11-plate bottom);
+    overflow-x: auto;
+    scroll-timeline: --d11 x;
+  }
+  .d11-measure::after { content: ""; display: block; width: 20px; height: 100%; }
+
+  @keyframes d11-flip { from, to { --d11-touching: 1; } }
+
+  /* the only difference between the two stages */
+  .d11-opacity .d11-plate {
+    @container style(--d11-touching: 1) { opacity: 0; }
+  }
+  .d11-display .d11-plate {
+    @container style(--d11-touching: 1) { display: none; }
+  }
+
+  .d11-readout { counter-reset: t var(--d11-touching); }
+  .d11-readout::before { content: "--d11-touching: " counter(t); }
+</style>
+
+<!-- ================================================================== -->
+<h2 id="all">Putting it all together</h2>
+<p>
+  This is the article's technique, with the article's names (<code>--line</code>, <code>--section</code>,
+  <code>--touch</code>, <code>--touching</code>). The only change: the article puts the switch on <code>&lt;body&gt;</code>,
+  and this demo puts it on its own stage element so it doesn't affect the rest of the page.
+</p>
+<p>
+  The plate is 160px wide and the section starts at 30% of the stage width, so the plate hides once the stage is
+  narrower than 600px (0.3 × 600 − 160 = 20px gap).
+</p>
+
+<div class="demo" id="ov-demo">
+  <p class="demo-title">Example: the article's demo</p>
+  <div class="stage ov-stage" id="ov" data-show-html>
+    <div class="plate ov-decor" aria-hidden="true"></div>
+    <div class="ov-measure visible-scrollbar"></div>
+    <section class="ov-section">
+      <article class="ov-card"><div class="ov-img"></div><h4>Section title</h4><p>A short description.</p></article>
+      <article class="ov-card"><div class="ov-img"></div><h4>Section title</h4><p>A short description.</p></article>
+      <article class="ov-card"><div class="ov-img"></div><h4>Section title</h4><p>A short description.</p></article>
+    </section>
+    <p class="ov-readout"></p>
+  </div>
+  <div class="controls">
+    <label>Stage width <input type="range" min="360" max="800" value="760" data-var="--stage-w" data-unit="px" data-target="#ov"><output></output></label>
+    <label><input type="checkbox" id="ov-debug" checked> Show the measuring box</label>
+  </div>
+  <p class="hint">Narrow the stage. The dashed box is <code>.measure</code>. Once it's narrower than its 20px pink child, the plate fades out.</p>
+</div>
+<style data-show>
+  .ov-stage {
+    --touching: 0;
+    timeline-scope: --touch;             /* the article puts these four lines on <body> */
+    animation: flip-touch 1ms linear;
+    animation-timeline: --touch;
+    width: min(100%, var(--stage-w));    /* slider, standing in for the viewport width */
+  }
+
+  .ov-decor {
+    anchor-name: --line;
+    position: absolute;
+    top: 24px;
+    left: 0;
+    width: 160px;
+    aspect-ratio: 1;
+  }
+  .ov-section {
+    anchor-name: --section;
+    margin-left: 30%;                    /* fluid: moves with the stage width */
+  }
+
+  .ov-measure {
+    position: absolute;
+    left:   anchor(--line right);
+    right:  anchor(--section left);
+    top:    anchor(--line top);
+    bottom: anchor(--line bottom);
+    overflow-x: auto;
+    scroll-timeline: --touch x;
+  }
+  .ov-measure::after {
+    content: "";
+    display: block;
+    width: 20px;
+    height: 100%;
+  }
+
+  @keyframes flip-touch {
+    from, to { --touching: 1; }
+  }
+
+  .ov-decor {
+    @container style(--touching: 1) {
+      opacity: 0;
+    }
+  }
+
+  .ov-readout { counter-reset: t var(--touching); }
+  .ov-readout::before { content: "--touching: " counter(t); }
+</style>
+<style data-show="Production polish (my addition, not in the article)">
+  /* untick "Show the measuring box" to see this */
+  #ov-demo:has(#ov-debug:not(:checked)) .ov-measure {
+    scrollbar-width: none;   /* hides the scrollbar, but the box is still scrollable, so the timeline still works */
+    pointer-events: none;    /* never blocks clicks on whatever is underneath */
+  }
+</style>
+
+<!-- ================================================================== -->
+<h2 id="support">Browser support and caveats</h2>
+<ul>
+  <li>The technique needs anchor positioning, scroll-driven animations (including <code>timeline-scope</code>) and style
+    queries, all at once. The badges at the top test each one in your browser.</li>
+  <li>The author calls it a progressive enhancement. If a feature is missing, the image just stays visible.
+    You could make that explicit with <code>@supports (anchor-name: --a) and (animation-timeline: --a) { … }</code>.</li>
+  <li>The threshold is a fixed width (20px in the article). Change the sensor's <code>width</code> to change it.</li>
+  <li>Hide the decorative element with <code>opacity</code> or <code>visibility</code>, never <code>display: none</code> (§11).</li>
+  <li>Two Chrome behaviors I found while testing this page (Chrome 157):
+    <ul>
+      <li>An animation that reaches its timeline through <code>timeline-scope</code> stops applying at the exact end of
+        the scroll range (§7).</li>
+      <li>If <code>timeline-scope</code> is removed at runtime, the animation freezes, and it doesn't relink when the scope is
+        added back.</li>
+    </ul>
+    Neither affects the technique as written: <code>.measure</code> is never scrolled and the scope never changes.
+    The <code>pointer-events: none</code> polish also stops anyone from scrolling <code>.measure</code> by accident.</li>
+  <li>The article credits the overflow-detection idea to Bramus Van Damme's work on detecting whether an element can scroll.</li>
+</ul>
+
+</main>
+
+<script>
+  // Everything that *detects* anything on this page is CSS. This script only:
+  //  1. highlights comments in the static code blocks,
+  //  2. prints each <style data-show> block, so the code you read is the code that runs,
+  //  3. prints each demo's HTML,
+  //  4. copies slider / color-picker values into CSS custom properties.
+  const dedent = (text) => {
+    const lines = text.replace(/^\s*\n/, '').replace(/\s+$/, '').split('\n');
+    const indents = lines.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length);
+    const min = Math.min(...indents);
+    return lines.map((l) => l.slice(min)).join('\n');
+  };
+  const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const highlight = (css) => escapeHtml(css).replace(/\/\*[\s\S]*?\*\//g, (m) => `<span class="c">${m}</span>`);
+
+  for (const pre of document.querySelectorAll('pre.code')) {
+    pre.innerHTML = `<code>${highlight(dedent(pre.textContent))}</code>`;
+  }
+
+  for (const style of document.querySelectorAll('style[data-show]')) {
+    const label = document.createElement('p');
+    label.className = 'code-label';
+    label.textContent = style.dataset.show || 'The CSS running this demo';
+    const pre = document.createElement('pre');
+    pre.className = 'code';
+    pre.innerHTML = `<code>${highlight(dedent(style.textContent))}</code>`;
+    style.after(label, pre);
+  }
+
+  for (const el of document.querySelectorAll('[data-show-html]')) {
+    const clone = el.cloneNode(true);
+    clone.removeAttribute('data-show-html');
+    const [first, ...rest] = clone.outerHTML.split('\n');
+    const indents = rest.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length);
+    const min = indents.length ? Math.min(...indents) : 0;
+    const details = document.createElement('details');
+    details.innerHTML = '<summary>Show the HTML</summary><pre></pre>';
+    details.querySelector('pre').textContent = [first, ...rest.map((l) => l.slice(min))].join('\n');
+    el.closest('.demo').append(details);
+  }
+
+  for (const input of document.querySelectorAll('input[data-var]')) {
+    const target = document.querySelector(input.dataset.target);
+    const output = input.parentElement.querySelector('output');
+    const unit = input.dataset.unit ?? '';
+    const apply = () => {
+      target.style.setProperty(input.dataset.var, input.value + unit);
+      if (output) output.textContent = input.value + unit;
+    };
+    input.addEventListener('input', apply);
+    apply();
+  }
+</script>
+</body>
+</html>
