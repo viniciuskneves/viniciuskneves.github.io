@@ -66,8 +66,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           SITE_URL: ${{ steps.pages.outputs.base_url }}
 
-      # Same Jekyll build the "Deploy from a branch" source runs, so README.md
-      # stays the home page and hand-written files are published as before.
+      # Same Jekyll build the "Deploy from a branch" source runs, so the
+      # hand-written files (index.html, wirwtw/) are published as before.
       - uses: actions/jekyll-build-pages@v1
         with:
           source: ./
