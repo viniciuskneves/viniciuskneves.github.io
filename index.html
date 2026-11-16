@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vinicius Kiatkoski Neves</title>
+<meta name="description" content="Software engineer in Berlin, tech lead at Miro. Articles on JavaScript, Vue and AWS, and a weekly list of what I read and watched.">
+<meta property="og:title" content="Vinicius Kiatkoski Neves">
+<meta property="og:description" content="Software engineer in Berlin, tech lead at Miro. Articles on JavaScript, Vue and AWS, and a weekly list of what I read and watched.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://viniciuskneves.github.io/">
+<link rel="canonical" href="https://viniciuskneves.github.io/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23db2777'/%3E%3Cstop offset='1' stop-color='%236d4cdd'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='7' fill='url(%23g)'/%3E%3Ctext x='16' y='21.5' font-family='system-ui,sans-serif' font-size='15' font-weight='700' text-anchor='middle' fill='%23fff'%3EVK%3C/text%3E%3C/svg%3E">
+<style>
+  /* Base colours are the WIRWTW pages' palette; the accents are the pink of
+     the CSS-overlap article's headings and the violet of the wirwtw label. */
+  :root {
+    color-scheme: light;
+    --ink: #1f2328;
+    --muted: #59636e;
+    --line: #d1d9e0;
+    --soft: #f6f8fa;
+    --link: #0969da;
+    --pink: #db2777;
+    --violet: #6d4cdd;
+    --green: #1a7f37;
+    --grad: linear-gradient(110deg, var(--pink), var(--violet) 55%, var(--link));
+    --ease: cubic-bezier(.2, .7, .2, 1);
+  }
+  @property --angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 18px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: #fcfcfd;
+    overflow-x: hidden;
+  }
+  ::selection { background: rgb(109 76 221 / .18); }
+  main { position: relative; max-width: 760px; margin: 0 auto; padding: 72px 24px 64px; }
+  p { margin: 0 0 1rem; }
+  a:focus-visible { outline: 2px solid var(--violet); outline-offset: 3px; border-radius: 6px; }
+
+  /* Soft colour behind the top of the page. Purely decorative. */
+  .aurora { position: absolute; inset: 0 0 auto; height: 110vh; z-index: -1; overflow: hidden; pointer-events: none; }
+  .aurora::before, .aurora::after {
+    content: "";
+    position: absolute;
+    width: 55vmax; height: 55vmax;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: .16;
+  }
+  .aurora::before { top: -28vmax; left: -18vmax; background: var(--pink); }
+  .aurora::after { top: -22vmax; right: -24vmax; background: var(--violet); }
+
+  /* ---------- Hero ---------- */
+  .avatar {
+    width: 76px; height: 76px;
+    margin-bottom: 22px;
+    padding: 3px;
+    border-radius: 50%;
+    background: conic-gradient(from var(--angle), var(--pink), var(--violet), var(--link), var(--pink));
+  }
+  .avatar span {
+    display: grid; place-items: center;
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    background: #fff;
+    font-weight: 800; font-size: 1.45rem; letter-spacing: -.02em;
+  }
+  .hello { margin: 0 0 .25rem; color: var(--muted); font-size: 1.05rem; }
+  .wave { display: inline-block; transform-origin: 70% 75%; }
+  h1 { margin: 0; font-size: clamp(2.2rem, 7vw, 3.4rem); line-height: 1.08; letter-spacing: -.025em; }
+  .status {
+    display: inline-flex; align-items: center; gap: 10px;
+    margin: 1.1rem 0 1.75rem;
+    padding: 6px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgb(255 255 255 / .75);
+    color: var(--muted);
+    font-size: .95rem;
+  }
+  .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--green); }
+  .lede { font-size: 1.08rem; }
+
+  /* ---------- The two main links ---------- */
+  .cards {
+    list-style: none;
+    margin: 2.25rem 0 0; padding: 0;
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .card {
+    position: relative;
+    display: flex; flex-direction: column; gap: 4px;
+    height: 100%;
+    padding: 22px 22px 20px;
+    border: 1.5px solid transparent;
+    border-radius: 16px;
+    background:
+      linear-gradient(#fff, #fff) padding-box,
+      linear-gradient(var(--line), var(--line)) border-box;
+    box-shadow: 0 1px 2px rgb(31 35 40 / .06);
+    color: inherit;
+    text-decoration: none;
+    transition: transform .25s var(--ease), box-shadow .25s var(--ease), opacity .25s;
+  }
+  .card:hover, .card:focus-visible {
+    background:
+      linear-gradient(#fff, #fff) padding-box,
+      conic-gradient(from var(--angle), var(--pink), var(--violet), var(--link), var(--pink)) border-box;
+    box-shadow: 0 16px 32px -14px rgb(109 76 221 / .45);
+    outline: none;
+  }
+  .icon {
+    display: grid; place-items: center;
+    width: 42px; height: 42px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    background: var(--grad);
+    color: #fff;
+  }
+  .card strong { font-size: 1.15rem; line-height: 1.3; }
+  .card .desc { color: var(--muted); font-size: 1rem; }
+  .go {
+    position: absolute; top: 22px; right: 22px;
+    color: var(--violet); font-size: 1.3rem; line-height: 1;
+    transition: transform .25s var(--ease);
+  }
+
+  /* ---------- Sections ---------- */
+  h2 {
+    display: flex; align-items: center; gap: 12px;
+    margin: 4rem 0 1.5rem;
+    font-size: 1.35rem;
+  }
+  h2::before { content: ""; width: 26px; height: 4px; border-radius: 2px; background: var(--grad); }
+
+  .prose a {
+    color: var(--violet);
+    font-weight: 500;
+    text-decoration: none;
+    padding: 0 .1em;
+    border-radius: 3px;
+    background: var(--grad) 0 100% / 100% 2px no-repeat;
+    transition: background-size .3s var(--ease), color .3s;
+  }
+  .prose a:hover, .prose a:focus-visible { background-size: 100% 100%; color: #fff; }
+
+  /* ---------- Work timeline ---------- */
+  .timeline { position: relative; list-style: none; margin: 0; padding: 0 0 0 30px; }
+  .timeline::before {
+    content: "";
+    position: absolute; left: 6px; top: 10px; bottom: 14px;
+    width: 2px; border-radius: 2px;
+    background: linear-gradient(var(--pink), var(--violet), var(--link), var(--line));
+    transform-origin: top;
+  }
+  .timeline li { position: relative; padding-bottom: 26px; }
+  .timeline li:last-child { padding-bottom: 0; }
+  .timeline li::before {
+    content: "";
+    position: absolute; left: -30px; top: 5px;
+    width: 14px; height: 14px;
+    border: 2px solid var(--violet);
+    border-radius: 50%;
+    background: #fff;
+    transition: transform .25s var(--ease), background .25s;
+  }
+  .timeline li:first-child::before { border-color: var(--pink); background: var(--pink); }
+  .when {
+    display: block;
+    color: var(--violet);
+    font-size: .8rem; font-weight: 650; letter-spacing: .06em; text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+  .what { margin: 0 0 .25rem; font-size: 1.1rem; font-weight: 650; }
+  .what span { color: var(--muted); font-weight: 400; }
+  .timeline p:last-child { margin: 0; }
+
+  /* ---------- Talks ---------- */
+  .chips { list-style: none; margin: 1.25rem 0 1.5rem; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips li {
+    padding: 5px 13px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fff;
+    font-size: .92rem;
+    transition: transform .2s var(--ease), border-color .2s, color .2s;
+  }
+
+  /* ---------- Footer ---------- */
+  footer { margin-top: 4.5rem; padding-top: 1.75rem; border-top: 1px solid var(--line); }
+  footer ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+  footer a {
+    display: inline-block;
+    padding: 7px 16px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font-size: .95rem;
+    text-decoration: none;
+    transition: color .2s, border-color .2s, background .2s, transform .2s var(--ease);
+  }
+  footer a::after { content: " ↗"; color: var(--muted); transition: color .2s; }
+
+  /* ---------- Hover effects, only where there is a real pointer ---------- */
+  @media (hover: hover) {
+    .card:hover { transform: translateY(-4px); }
+    .card:hover .go { transform: translate(4px, -2px); }
+    .cards:has(.card:hover) .card:not(:hover) { opacity: .6; }
+    .timeline li:hover::before { transform: scale(1.3); }
+    .chips li:hover { transform: translateY(-2px); border-color: var(--violet); color: var(--violet); }
+    footer a:hover { transform: translateY(-2px); border-color: transparent; background: var(--grad); color: #fff; }
+    footer a:hover::after { color: #fff; }
+  }
+
+  /* ---------- Motion: on screen only, and only for people who haven't asked
+     for less. Everything above is the final, still state of the page. ---------- */
+  @media screen and (prefers-reduced-motion: no-preference) {
+    @keyframes rise { from { opacity: 0; transform: translateY(16px); } }
+    @keyframes spin { to { --angle: 360deg; } }
+    @keyframes drift { to { transform: translate(10vmax, 8vmax) scale(1.15); } }
+    @keyframes wave { 0%, 60%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(16deg); } 20% { transform: rotate(-8deg); } 40% { transform: rotate(-4deg); } 50% { transform: rotate(10deg); } }
+    @keyframes ping { 0% { box-shadow: 0 0 0 0 rgb(26 127 55 / .5); } 75%, 100% { box-shadow: 0 0 0 9px rgb(26 127 55 / 0); } }
+    @keyframes shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
+    @keyframes grow { from { transform: scaleY(0); } }
+
+    .rise { animation: rise .8s var(--ease) both; animation-delay: calc(var(--i, 0) * 90ms); }
+    .aurora::before { animation: drift 22s ease-in-out infinite alternate; }
+    .aurora::after { animation: drift 28s ease-in-out infinite alternate-reverse; }
+    .avatar { animation: spin 8s linear infinite; }
+    .wave { animation: wave 2.2s ease-in-out .9s 2; }
+    .dot { animation: ping 2.4s ease-out infinite; }
+    .card:hover, .card:focus-visible { animation: spin 3s linear infinite; }
+
+    /* One sweep of colour through the name, ending on plain ink. */
+    @supports (background-clip: text) or (-webkit-background-clip: text) {
+      .name {
+        background: linear-gradient(100deg, var(--ink) 33.3%, var(--pink) 45%, var(--violet) 55%, var(--ink) 66.7%) 100% 0 / 300% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: shine 1.8s var(--ease) .5s both;
+      }
+    }
+
+    /* Sections fade in and the timeline draws itself as you scroll to them.
+       Browsers without scroll-driven animations just show them. */
+    @supports (animation-timeline: view()) {
+      .reveal { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 60%; }
+      .timeline::before { animation: grow linear both; animation-timeline: view(); animation-range: entry 20% cover 55%; }
+    }
+  }
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"></div>
+<main>
+  <header>
+    <div class="avatar rise" aria-hidden="true"><span>VK</span></div>
+    <p class="hello rise" style="--i:1">Hi, I'm <span class="wave" aria-hidden="true">👋</span></p>
+    <h1 class="rise" style="--i:2"><span class="name">Vinicius Kiatkoski Neves</span></h1>
+    <p class="status rise" style="--i:3"><span class="dot" aria-hidden="true"></span>Senior Software Engineer at Miro · Berlin</p>
+  </header>
+
+  <p class="lede rise" style="--i:4">I'm a software engineer with over ten years of experience, mostly in TypeScript and JavaScript. I like building products, and I like building the things other engineers build on: contracts between services, published packages, shared tooling and, lately, the interfaces AI agents use.</p>
+
+  <nav aria-label="Writing">
+    <ul class="cards">
+      <li class="rise" style="--i:5">
+        <a class="card" href="https://github.com/viniciuskneves/articles">
+          <span class="icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></span>
+          <strong>Articles</strong>
+          <span class="desc">Everything I've published, with links to DEV, Medium and LinkedIn.</span>
+          <span class="go" aria-hidden="true">→</span>
+        </a>
+      </li>
+      <li class="rise" style="--i:6">
+        <a class="card" href="wirwtw/">
+          <span class="icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5A1.5 1.5 0 0 1 4.5 4H9a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H3z"/><path d="M21 5.5A1.5 1.5 0 0 0 19.5 4H15a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/></svg></span>
+          <strong>What I Read/Watched This Week</strong>
+          <span class="desc">A weekly list of the articles and videos I liked, some with notes.</span>
+          <span class="go" aria-hidden="true">→</span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <section class="prose" aria-labelledby="work">
+    <h2 id="work" class="reveal">Work</h2>
+    <ol class="timeline" reversed>
+      <li class="reveal">
+        <span class="when">2024 – now</span>
+        <p class="what">Senior Software Engineer <span>at Miro</span></p>
+        <p>Tech lead for the HTML widget behind the second generation of Miro Prototypes. I joined the Prototyping team as it formed around an acquisition and brought Prototyping to production as a new Miro product.</p>
+      </li>
+      <li class="reveal">
+        <span class="when">2022 – 2024</span>
+        <p class="what">Engineering Manager <span>at Miro</span></p>
+        <p>Started a team that took over the Grid widget and ran a performance program for it: zooming became up to 30% faster on large boards. Later also led a second team.</p>
+      </li>
+      <li class="reveal">
+        <span class="when">2019 – 2022</span>
+        <p class="what">Frontend Engineer, then Engineering Manager and Lead <span>at Homeday</span></p>
+        <p>One of the main contributors to <a href="https://github.com/homeday-de/homeday-blocks">Homeday Blocks</a>, the company's open source Vue.js component library, and brought infrastructure as code to the frontend projects with AWS CDK.</p>
+      </li>
+      <li class="reveal">
+        <span class="when">2015 – 2018</span>
+        <p class="what">Software Developer <span>at Chaordic</span></p>
+        <p>APIs in Node.js and Scala, and lead developer on the team that integrated our products into customers' websites.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="prose" aria-labelledby="talks">
+    <h2 id="talks" class="reveal">Talks and community</h2>
+    <p class="reveal">Between 2017 and 2020 I gave ten talks at meetups and conferences, on topics from how JavaScript works to visual testing and Vue 3 Suspense. The <a href="https://slides.com/viniciuskneves">slides are on slides.com</a>.</p>
+    <ul class="chips reveal" aria-label="Where I spoke">
+      <li>Vue.js Berlin</li>
+      <li>BerlinJS</li>
+      <li>Porto.Vue</li>
+      <li>The Developer's Conference</li>
+      <li>VueFloripa</li>
+      <li>FloripaJS</li>
+      <li>Front in Floripa</li>
+    </ul>
+    <p class="reveal">In Florianópolis I organized the VueFloripa meetup and the Front in Floripa conference.</p>
+  </section>
+
+  <footer>
+    <ul>
+      <li><a href="https://github.com/viniciuskneves">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/viniciuskneves/">LinkedIn</a></li>
+      <li><a href="https://dev.to/viniciuskneves">DEV</a></li>
+      <li><a href="https://viniciuskneves.medium.com">Medium</a></li>
+    </ul>
+  </footer>
+</main>
+</body>
+</html>
