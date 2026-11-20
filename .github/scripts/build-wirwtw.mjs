@@ -3,10 +3,12 @@
  * Generates the WIRWTW ("What I Read/Watched This Week") pages from the
  * repository's GitHub Discussions labeled `wirwtw`:
  *
- *   wirwtw/index.html      every entry, newest first
- *   wirwtw/<N>/index.html  one page per discussion; N comes from "WIRWTW #N"
- *                          in the discussion title, so supporting material
- *                          can live next to it in wirwtw/<N>/
+ *   wirwtw/index.html             every entry, newest first
+ *   wirwtw/<YYYY-Www>/index.html  one page per discussion, named after the
+ *                                 ISO week in its title, e.g. "What I
+ *                                 Read/Watched This Week (2026-W47)" becomes
+ *                                 wirwtw/2026-W47/, so supporting material
+ *                                 can live next to it in that folder
  *
  * .github/workflows/pages.yml runs this before the Jekyll build, on every push
  * and on every discussion change. Nothing it writes is committed: each build
@@ -24,7 +26,12 @@ import path from 'node:path';
 
 const LABEL = 'wirwtw';
 const SERIES_TITLE = 'What I Read/Watched This Week';
-const SERIES_NUMBER = /\bWIRWTW\s*#\s*(\d+)\b/i;
+const SERIES_WEEK = /\b(\d{4})-W(\d{2})\b/i;
+
+// An ISO year has 53 weeks when it ends on a Thursday, or when the year
+// before ended on a Wednesday (0 = Sunday ... 4 = Thursday).
+const dec31Weekday = (year) => (year + Math.floor(year / 4) - Math.floor(year / 100) + Math.floor(year / 400)) % 7;
+const weeksInYear = (year) => (dec31Weekday(year) === 4 || dec31Weekday(year - 1) === 3 ? 53 : 52);
 
 const QUERY = `
   query ($owner: String!, $name: String!, $cursor: String) {
@@ -95,7 +102,7 @@ async function fetchDiscussions() {
 }
 
 function selectEntries(discussions) {
-  const byNumber = new Map();
+  const byWeek = new Map();
   for (const discussion of discussions) {
     if (!discussion.labels.nodes.some((label) => label.name === LABEL)) continue;
 
@@ -107,20 +114,27 @@ function selectEntries(discussions) {
       continue;
     }
 
-    const match = discussion.title.match(SERIES_NUMBER);
+    const match = discussion.title.match(SERIES_WEEK);
     if (!match) {
-      warn(`Skipping discussion #${discussion.number}: its title needs "WIRWTW #<number>" to decide the page URL.`);
+      warn(`Skipping discussion #${discussion.number}: its title needs the ISO week, e.g. "(2026-W47)", to decide the page URL.`);
       continue;
     }
 
-    const number = Number(match[1]);
-    const taken = byNumber.get(number);
-    if (taken) {
-      throw new Error(`Discussions #${taken.number} and #${discussion.number} are both titled WIRWTW #${number}; rename one of them.`);
+    const [year, weekNumber] = [Number(match[1]), Number(match[2])];
+    if (weekNumber < 1 || weekNumber > weeksInYear(year)) {
+      warn(`Skipping discussion #${discussion.number}: its title says week ${match[2]}, but ${year} has weeks 01 to ${weeksInYear(year)}.`);
+      continue;
     }
-    byNumber.set(number, { ...discussion, seriesNumber: number });
+
+    // Zero-padded, so newest first is a plain string sort.
+    const week = `${year}-W${match[2]}`;
+    const taken = byWeek.get(week);
+    if (taken) {
+      throw new Error(`Discussions #${taken.number} and #${discussion.number} are both for ${week}; rename one of them.`);
+    }
+    byWeek.set(week, { ...discussion, week });
   }
-  return [...byNumber.values()].sort((a, b) => b.seriesNumber - a.seriesNumber);
+  return [...byWeek.values()].sort((a, b) => b.week.localeCompare(a.week));
 }
 
 const escapeHtml = (value) =>
@@ -183,7 +197,7 @@ function renderEntry(entry) {
   return layout({
     title: entry.title,
     description: excerpt(entry.bodyText),
-    urlPath: `/${LABEL}/${entry.seriesNumber}/`,
+    urlPath: `/${LABEL}/${entry.week}/`,
     ogType: 'article',
     main: `<nav class="crumb"><a href="../">← ${SERIES_TITLE}</a></nav>
 <article>
@@ -202,7 +216,7 @@ function renderIndex(entries) {
   const list = entries.length
     ? `<ul class="entries">
 ${entries
-  .map((e) => `<li><a href="${e.seriesNumber}/">${escapeHtml(e.title)}</a> ${timeTag(e.createdAt)}</li>`)
+  .map((e) => `<li><a href="${e.week}/">${escapeHtml(e.title)}</a> ${timeTag(e.createdAt)}</li>`)
   .join('\n')}
 </ul>`
     : '<p>Nothing here yet.</p>';
@@ -292,7 +306,7 @@ a { color: #0969da; }
 try {
   const entries = selectEntries(await fetchDiscussions());
   for (const entry of entries) {
-    await write(path.join(LABEL, String(entry.seriesNumber), 'index.html'), renderEntry(entry));
+    await write(path.join(LABEL, entry.week, 'index.html'), renderEntry(entry));
   }
   await write(path.join(LABEL, 'index.html'), renderIndex(entries));
 } catch (error) {
