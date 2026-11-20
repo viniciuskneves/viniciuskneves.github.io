@@ -3,15 +3,24 @@
  * Generates the WIRWTW ("What I Read/Watched This Week") pages from the
  * repository's GitHub Discussions labeled `wirwtw`:
  *
- *   wirwtw/index.html      every entry, newest first
- *   wirwtw/<N>/index.html  one page per discussion; N comes from "WIRWTW #N"
- *                          in the discussion title, so supporting material
- *                          can live next to it in wirwtw/<N>/
+ *   wirwtw/index.html             every entry, newest first
+ *   wirwtw/<YYYY-Www>/index.html  one page per discussion, named after the
+ *                                 ISO week in its title, e.g. "What I
+ *                                 Read/Watched This Week (2026-W47)" becomes
+ *                                 wirwtw/2026-W47/, so supporting material
+ *                                 can live next to it in that folder
  *
  * .github/workflows/pages.yml runs this before the Jekyll build, on every push
  * and on every discussion change. Nothing it writes is committed: each build
  * re-reads the discussions, so edits show up and deleted or unlabeled
  * discussions disappear on the next deploy.
+ *
+ * The build fails rather than publish something wrong: when one of the
+ * owner's labeled discussions can't be published (no week or an invalid week
+ * in its title, or a week another discussion already has), or when there
+ * would be no pages at all. A failed build deploys nothing, so the live site
+ * keeps its current pages. Discussions by anyone else are skipped with a
+ * warning.
  *
  * Local preview (build into an empty directory, not into the repo):
  *   GITHUB_REPOSITORY=viniciuskneves/viniciuskneves.github.io \
@@ -24,7 +33,12 @@ import path from 'node:path';
 
 const LABEL = 'wirwtw';
 const SERIES_TITLE = 'What I Read/Watched This Week';
-const SERIES_NUMBER = /\bWIRWTW\s*#\s*(\d+)\b/i;
+const SERIES_WEEK = /\b(\d{4})-W(\d{2})\b/i;
+
+// An ISO year has 53 weeks when it ends on a Thursday, or when the year
+// before ended on a Wednesday (0 = Sunday ... 4 = Thursday).
+const dec31Weekday = (year) => (year + Math.floor(year / 4) - Math.floor(year / 100) + Math.floor(year / 400)) % 7;
+const weeksInYear = (year) => (dec31Weekday(year) === 4 || dec31Weekday(year - 1) === 3 ? 53 : 52);
 
 const QUERY = `
   query ($owner: String!, $name: String!, $cursor: String) {
@@ -69,6 +83,7 @@ const siteUrl = SITE_URL.replace(/\/+$/, '');
 // Messages only ever contain discussion numbers and logins, never titles, so
 // discussion content can't inject workflow commands into the Actions log.
 const warn = (message) => console.log(`::warning::${message}`);
+const logError = (message) => console.log(`::error::${message}`);
 
 async function fetchDiscussions() {
   const discussions = [];
@@ -95,32 +110,50 @@ async function fetchDiscussions() {
 }
 
 function selectEntries(discussions) {
-  const byNumber = new Map();
+  const byWeek = new Map();
+  const problems = [];
   for (const discussion of discussions) {
     if (!discussion.labels.nodes.some((label) => label.name === LABEL)) continue;
 
     // Anyone can open a discussion on a public repo, and category forms can
     // apply labels automatically, so only the owner's discussions get published.
+    // Other people's only warn: failing on them would let anyone block deploys.
     const author = discussion.author?.login;
     if (author !== owner) {
       warn(`Skipping discussion #${discussion.number}: it is by ${author ?? 'a deleted account'}, only discussions by ${owner} are published.`);
       continue;
     }
 
-    const match = discussion.title.match(SERIES_NUMBER);
+    // From here on it is the owner's own post, so anything that would keep it
+    // off the site fails the build instead of being skipped.
+    const match = discussion.title.match(SERIES_WEEK);
     if (!match) {
-      warn(`Skipping discussion #${discussion.number}: its title needs "WIRWTW #<number>" to decide the page URL.`);
+      problems.push(`Discussion #${discussion.number}: its title needs the ISO week, e.g. "(2026-W47)", to decide the page URL.`);
       continue;
     }
 
-    const number = Number(match[1]);
-    const taken = byNumber.get(number);
-    if (taken) {
-      throw new Error(`Discussions #${taken.number} and #${discussion.number} are both titled WIRWTW #${number}; rename one of them.`);
+    const [year, weekNumber] = [Number(match[1]), Number(match[2])];
+    if (weekNumber < 1 || weekNumber > weeksInYear(year)) {
+      problems.push(`Discussion #${discussion.number}: its title says week ${match[2]}, but ${year} has weeks 01 to ${weeksInYear(year)}.`);
+      continue;
     }
-    byNumber.set(number, { ...discussion, seriesNumber: number });
+
+    // Zero-padded, so newest first is a plain string sort.
+    const week = `${year}-W${match[2]}`;
+    const taken = byWeek.get(week);
+    if (taken) {
+      problems.push(`Discussions #${taken.number} and #${discussion.number} are both for ${week}; rename one of them.`);
+      continue;
+    }
+    byWeek.set(week, { ...discussion, week });
   }
-  return [...byNumber.values()].sort((a, b) => b.seriesNumber - a.seriesNumber);
+
+  // Report every problem in one run, not just the first.
+  if (problems.length) {
+    for (const problem of problems) logError(problem);
+    throw new Error('Not deploying until the problems above are fixed; the live site keeps its current pages.');
+  }
+  return [...byWeek.values()].sort((a, b) => b.week.localeCompare(a.week));
 }
 
 const escapeHtml = (value) =>
@@ -183,7 +216,7 @@ function renderEntry(entry) {
   return layout({
     title: entry.title,
     description: excerpt(entry.bodyText),
-    urlPath: `/${LABEL}/${entry.seriesNumber}/`,
+    urlPath: `/${LABEL}/${entry.week}/`,
     ogType: 'article',
     main: `<nav class="crumb"><a href="../">← ${SERIES_TITLE}</a></nav>
 <article>
@@ -199,13 +232,11 @@ ${body}
 }
 
 function renderIndex(entries) {
-  const list = entries.length
-    ? `<ul class="entries">
+  const list = `<ul class="entries">
 ${entries
-  .map((e) => `<li><a href="${e.seriesNumber}/">${escapeHtml(e.title)}</a> ${timeTag(e.createdAt)}</li>`)
+  .map((e) => `<li><a href="${e.week}/">${escapeHtml(e.title)}</a> ${timeTag(e.createdAt)}</li>`)
   .join('\n')}
-</ul>`
-    : '<p>Nothing here yet.</p>';
+</ul>`;
   return layout({
     title: SERIES_TITLE,
     description: `${SERIES_TITLE}: articles and videos, one post per week.`,
@@ -291,8 +322,13 @@ a { color: #0969da; }
 
 try {
   const entries = selectEntries(await fetchDiscussions());
+  // An empty list is almost always a mistake (a removed label, a deleted
+  // discussion), so fail instead of deploying it; the live site keeps its pages.
+  if (entries.length === 0) {
+    throw new Error(`No WIRWTW pages to publish: there are no discussions by ${owner} labeled "${LABEL}".`);
+  }
   for (const entry of entries) {
-    await write(path.join(LABEL, String(entry.seriesNumber), 'index.html'), renderEntry(entry));
+    await write(path.join(LABEL, entry.week, 'index.html'), renderEntry(entry));
   }
   await write(path.join(LABEL, 'index.html'), renderIndex(entries));
 } catch (error) {
