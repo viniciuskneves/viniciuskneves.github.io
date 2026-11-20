@@ -15,6 +15,13 @@
  * re-reads the discussions, so edits show up and deleted or unlabeled
  * discussions disappear on the next deploy.
  *
+ * The build fails rather than publish something wrong: when one of the
+ * owner's labeled discussions can't be published (no week or an invalid week
+ * in its title, or a week another discussion already has), or when there
+ * would be no pages at all. A failed build deploys nothing, so the live site
+ * keeps its current pages. Discussions by anyone else are skipped with a
+ * warning.
+ *
  * Local preview (build into an empty directory, not into the repo):
  *   GITHUB_REPOSITORY=viniciuskneves/viniciuskneves.github.io \
  *   GITHUB_TOKEN="$(gh auth token)" \
@@ -76,6 +83,7 @@ const siteUrl = SITE_URL.replace(/\/+$/, '');
 // Messages only ever contain discussion numbers and logins, never titles, so
 // discussion content can't inject workflow commands into the Actions log.
 const warn = (message) => console.log(`::warning::${message}`);
+const logError = (message) => console.log(`::error::${message}`);
 
 async function fetchDiscussions() {
   const discussions = [];
@@ -103,26 +111,30 @@ async function fetchDiscussions() {
 
 function selectEntries(discussions) {
   const byWeek = new Map();
+  const problems = [];
   for (const discussion of discussions) {
     if (!discussion.labels.nodes.some((label) => label.name === LABEL)) continue;
 
     // Anyone can open a discussion on a public repo, and category forms can
     // apply labels automatically, so only the owner's discussions get published.
+    // Other people's only warn: failing on them would let anyone block deploys.
     const author = discussion.author?.login;
     if (author !== owner) {
       warn(`Skipping discussion #${discussion.number}: it is by ${author ?? 'a deleted account'}, only discussions by ${owner} are published.`);
       continue;
     }
 
+    // From here on it is the owner's own post, so anything that would keep it
+    // off the site fails the build instead of being skipped.
     const match = discussion.title.match(SERIES_WEEK);
     if (!match) {
-      warn(`Skipping discussion #${discussion.number}: its title needs the ISO week, e.g. "(2026-W47)", to decide the page URL.`);
+      problems.push(`Discussion #${discussion.number}: its title needs the ISO week, e.g. "(2026-W47)", to decide the page URL.`);
       continue;
     }
 
     const [year, weekNumber] = [Number(match[1]), Number(match[2])];
     if (weekNumber < 1 || weekNumber > weeksInYear(year)) {
-      warn(`Skipping discussion #${discussion.number}: its title says week ${match[2]}, but ${year} has weeks 01 to ${weeksInYear(year)}.`);
+      problems.push(`Discussion #${discussion.number}: its title says week ${match[2]}, but ${year} has weeks 01 to ${weeksInYear(year)}.`);
       continue;
     }
 
@@ -130,9 +142,16 @@ function selectEntries(discussions) {
     const week = `${year}-W${match[2]}`;
     const taken = byWeek.get(week);
     if (taken) {
-      throw new Error(`Discussions #${taken.number} and #${discussion.number} are both for ${week}; rename one of them.`);
+      problems.push(`Discussions #${taken.number} and #${discussion.number} are both for ${week}; rename one of them.`);
+      continue;
     }
     byWeek.set(week, { ...discussion, week });
+  }
+
+  // Report every problem in one run, not just the first.
+  if (problems.length) {
+    for (const problem of problems) logError(problem);
+    throw new Error('Not deploying until the problems above are fixed; the live site keeps its current pages.');
   }
   return [...byWeek.values()].sort((a, b) => b.week.localeCompare(a.week));
 }
@@ -213,13 +232,11 @@ ${body}
 }
 
 function renderIndex(entries) {
-  const list = entries.length
-    ? `<ul class="entries">
+  const list = `<ul class="entries">
 ${entries
   .map((e) => `<li><a href="${e.week}/">${escapeHtml(e.title)}</a> ${timeTag(e.createdAt)}</li>`)
   .join('\n')}
-</ul>`
-    : '<p>Nothing here yet.</p>';
+</ul>`;
   return layout({
     title: SERIES_TITLE,
     description: `${SERIES_TITLE}: articles and videos, one post per week.`,
@@ -305,6 +322,11 @@ a { color: #0969da; }
 
 try {
   const entries = selectEntries(await fetchDiscussions());
+  // An empty list is almost always a mistake (a removed label, a deleted
+  // discussion), so fail instead of deploying it; the live site keeps its pages.
+  if (entries.length === 0) {
+    throw new Error(`No WIRWTW pages to publish: there are no discussions by ${owner} labeled "${LABEL}".`);
+  }
   for (const entry of entries) {
     await write(path.join(LABEL, entry.week, 'index.html'), renderEntry(entry));
   }
